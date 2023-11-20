@@ -1,119 +1,109 @@
-import tkinter as tk
-from tkinter import messagebox
+import random
 
-class TicTacToeAI:
+class Board:
     def __init__(self):
-        self.window = tk.Tk()
-        self.window.title("Tic-Tac-Toe")
-
-        # Define colors and fonts
-        self.bg_color = '#2E86AB'  # Change to your desired background color
-        self.button_bg_color = '#F0F0F0'  # Change to your desired button background color
-        self.button_fg_color = '#000000'  # Change to your desired button text color
-        self.font = ('Arial', 30)
-
+        self.board = [' ' for _ in range(9)]
         self.current_player = 'X'
-        self.board = [[' ' for _ in range(3)] for _ in range(3)]
 
-        self.buttons = [[None for _ in range(3)] for _ in range(3)]
+    def display_board(self):
         for i in range(3):
-            for j in range(3):
-                self.buttons[i][j] = tk.Button(self.window, text=' ', font=self.font, width=6, height=2,
-                                              command=lambda row=i, col=j: self.on_click(row, col))
-                self.buttons[i][j].grid(row=i, column=j, padx=5, pady=5)
-                self.buttons[i][j].config(bg=self.button_bg_color, fg=self.button_fg_color)
+            print('| ' + self.board[i*3] + ' | ' + self.board[i*3+1] + ' | ' + self.board[i*3+2] + ' |')
 
-        # Set window background color
-        self.window.configure(bg=self.bg_color)
-
-    def on_click(self, row, col):
-        if self.board[row][col] == ' ' and self.current_player == 'X':
-            self.board[row][col] = self.current_player
-            self.buttons[row][col].config(text=self.current_player, state='disabled', disabledforeground=self.button_fg_color)
-            if self.check_winner(self.current_player):
-                messagebox.showinfo("Game Over", f"Player {self.current_player} wins!")
-                self.window.quit()
-            elif self.is_board_full():
-                messagebox.showinfo("Game Over", "It's a draw!")
-                self.window.quit()
-            else:
-                self.current_player = 'O'
-                self.ai_move()
-
-    def check_winner(self, player):
-        for row in self.board:
-            if all(cell == player for cell in row):
-                return True
-
-        for col in range(3):
-            if all(row[col] == player for row in self.board):
-                return True
-
-        if all(self.board[i][i] == player for i in range(3)) or all(self.board[i][2 - i] == player for i in range(3)):
+    def check_move(self, move):
+        if move < 0 or move > 8 or self.board[move] != ' ':
+            return False
+        else:
             return True
 
+    def make_move(self, move, player):
+        if self.check_move(move):
+            self.board[move] = player
+            self.current_player = 'X' if self.current_player == 'O' else 'O'
+            return True
+        else:
+            return False
+
+    def check_win(self):
+        winning_conditions = [
+            (0, 1, 2), (3, 4, 5), (6, 7, 8),
+            (0, 3, 6), (1, 4, 7), (2, 5, 8),
+            (0, 4, 8), (2, 4, 6)
+        ]
+
+        for condition in winning_conditions:
+            if self.board[condition[0]] == self.board[condition[1]] == self.board[condition[2]] != ' ':
+                return True
         return False
 
-    def is_board_full(self):
-        return all(cell != ' ' for row in self.board for cell in row)
+    def check_tie(self):
+        for cell in self.board:
+            if cell == ' ':
+                return False
+        return True
 
-    def ai_move(self):
-        best_score = float('-inf')
-        best_move = None
-        for i in range(3):
-            for j in range(3):
-                if self.board[i][j] == ' ':
-                    self.board[i][j] = 'O'
-                    score = self.minimax(self.board, 0, False)
-                    self.board[i][j] = ' '
-                    if score > best_score:
-                        best_score = score
-                        best_move = (i, j)
-        if best_move:
-            row, col = best_move
-            self.board[row][col] = 'O'
-            self.buttons[row][col].config(text='O', state='disabled', disabledforeground=self.button_fg_color)
-            if self.check_winner('O'):
-                messagebox.showinfo("Game Over", "AI agent wins!!")
-                self.window.quit()
-            elif self.is_board_full():
-                messagebox.showinfo("Game Over", "It's a draw!")
-                self.window.quit()
+class AI:
+    def __init__(self):
+        self.depth = 6
+
+    def minimax(self, board, depth, maximizing):
+        if board.check_win() or board.check_tie():
+            if maximizing:
+                if board.check_win():
+                    return -10
+                elif board.check_tie():
+                    return 0
+                else:
+                    return 10
             else:
-                self.current_player = 'X'
+                if board.check_win():
+                    return 10
+                elif board.check_tie():
+                    return 0
+                else:
+                    return -10
 
-    def minimax(self, board, depth, maximizing_player):
-        if self.check_winner('O'):
-            return 1
-        if self.check_winner('X'):
-            return -1
-        if self.is_board_full():
-            return 0
+        if maximizing:
+            best_value = -float('inf')
+            for move in range(9):
+                if board.check_move(move):
+                    board.make_move(move, 'X')
+                    value = self.minimax(board, depth - 1, False)
+                    board.make_move(move, ' ')
+                    best_value = max(best_value, value)
+            return best_value
 
-        if maximizing_player:
-            max_eval = float('-inf')
-            for i in range(3):
-                for j in range(3):
-                    if board[i][j] == ' ':
-                        board[i][j] = 'O'
-                        eval = self.minimax(board, depth + 1, False)
-                        board[i][j] = ' '
-                        max_eval = max(max_eval, eval)
-            return max_eval
         else:
-            min_eval = float('inf')
-            for i in range(3):
-                for j in range(3):
-                    if board[i][j] == ' ':
-                        board[i][j] = 'X'
-                        eval = self.minimax(board, depth + 1, True)
-                        board[i][j] = ' '
-                        min_eval = min(min_eval, eval)
-            return min_eval
+            best_value = float('inf')
+            for move in range(9):
+                if board.check_move(move):
+                    board.make_move(move, 'O')
+                    value = self.minimax(board, depth - 1, True)
+                    board.make_move(move, ' ')
+                    best_value = min(best_value, value)
+            return best_value
 
-    def run(self):
-        self.window.mainloop()
+    def get_best_move(self, board):
+        best_value = -float('inf')
+        best_move = None
 
-if __name__ == "__main__":
-    game = TicTacToeAI()
-    game.run()
+        for move in range(9):
+            if board.check_move(move):
+                board.make_move(move, 'X')
+                value = self.minimax(board, self.depth - 1, False)
+                board.make_move(move, ' ')
+
+                if value > best_value:
+                    best_value = value
+                    best_move = move
+
+        return best_move
+
+
+def play_game():
+    board = Board()
+    ai = AI()
+
+    while True:
+        board.display_board()
+
+        if board.current_player == 'X
